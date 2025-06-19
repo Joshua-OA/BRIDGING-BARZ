@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>School Management - Cardano Admin</title>
+		<link rel="stylesheet" href="/static/css/admin-styles.css" />
+		<script src="/static/qrcode.min.js"></script>
+	</head>
+	<body>
+		<div class="container">
+			<header class="header">
+				<h1>Cardano School Admin</h1>
+				<button onclick="logout()" class="btn btn-danger">Logout</button>
+			</header>
+
+			<main>
+				<!-- School Management Section -->
+				<section class="card">
+					<h2>Add New School</h2>
+					<form id="addSchoolForm">
+						<div class="form-group">
+							<label class="label" for="schoolName">School Name</label>
+							<input
+								type="text"
+								id="schoolName"
+								class="input"
+								placeholder="e.g., University of Ghana"
+								required />
+						</div>
+						<div class="form-group">
+							<label class="label" for="schoolId">School ID</label>
+							<input
+								type="text"
+								id="schoolId"
+								class="input"
+								placeholder="e.g., UGN-MAIN"
+								required />
+						</div>
+						<div class="form-group">
+							<label class="label" for="schoolLocation">Location</label>
+							<input
+								type="text"
+								id="schoolLocation"
+								class="input"
+								placeholder="e.g., Accra, Ghana"
+								required />
+						</div>
+						<button type="submit" class="btn btn-primary">Add School</button>
+					</form>
+
+					<div id="schoolResult" class="result-box hidden">
+						<h3>School Added Successfully</h3>
+						<p class="mb-2">
+							School Name: <span id="newSchoolName" class="font-medium"></span>
+						</p>
+						<p class="mb-2">
+							School ID: <span id="newSchoolId" class="font-medium"></span>
+						</p>
+						<p class="mb-4">
+							Location: <span id="newSchoolLocation" class="font-medium"></span>
+						</p>
+
+						<div class="mb-2 font-medium">School QR Code:</div>
+						<div class="qr-code-container" id="schoolQrCode"></div>
+						<div class="mb-2">
+							<a
+								href="#"
+								id="downloadSchoolQR"
+								class="btn btn-secondary download-btn"
+								>Download QR Code</a
+							>
+						</div>
+						<p class="hint-text">
+							Scan this QR code to get information about counselors at this
+							school.
+						</p>
+					</div>
+				</section>
+
+				<!-- Counselor Management Section -->
+				<section class="card">
+					<h2>Add Counselor to School</h2>
+					<form id="addCounselorForm">
+						<div class="form-group">
+							<label class="label" for="counselorSchoolId">School</label>
+							<select id="counselorSchoolId" class="input" required>
+								<option value="">Select a school</option>
+								<!-- Schools will be loaded here -->
+							</select>
+						</div>
+						<div class="form-group">
+							<label class="label" for="counselorName">Counselor Name</label>
+							<input
+								type="text"
+								id="counselorName"
+								class="input"
+								placeholder="e.g., John Doe"
+								required />
+						</div>
+						<div class="form-group">
+							<label class="label" for="counselorEmail">Email</label>
+							<input
+								type="email"
+								id="counselorEmail"
+								class="input"
+								placeholder="e.g., john.doe@example.com"
+								required />
+						</div>
+						<div class="form-group">
+							<label class="label" for="counselorPassword">Password</label>
+							<input
+								type="password"
+								id="counselorPassword"
+								class="input"
+								required />
+						</div>
+						<button type="submit" class="btn btn-primary">Add Counselor</button>
+					</form>
+
+					<div id="counselorResult" class="result-box hidden">
+						<h3>Counselor Added Successfully</h3>
+						<p class="mb-2">
+							Counselor Name:
+							<span id="newCounselorName" class="font-medium"></span>
+						</p>
+						<p class="mb-2">
+							Email:
+							<span id="newCounselorEmail" class="font-medium"></span>
+						</p>
+						<p class="mb-2">
+							School ID:
+							<span id="newCounselorSchoolId" class="font-medium"></span>
+						</p>
+						<p class="mb-2">
+							User ID: <span id="newCounselorId" class="font-medium"></span>
+						</p>
+						<p class="mb-4">
+							Password:
+							<span id="newCounselorPassword" class="font-medium"></span>
+						</p>
+						<p class="mb-2 hint-text">
+							An email with these credentials has been sent to the counselor.
+						</p>
+
+						<div class="mb-2 font-medium">Counselor QR Code:</div>
+						<div class="qr-code-container" id="counselorQrCode"></div>
+						<div class="mb-2">
+							<a
+								href="#"
+								id="downloadCounselorQR"
+								class="btn btn-secondary download-btn"
+								>Download QR Code</a
+							>
+						</div>
+						<p class="hint-text">
+							Scan this QR code to easily input the Counselor ID in the app.
+						</p>
+					</div>
+				</section>
+
+				<!-- School List Section -->
+				<section class="card">
+					<h2>Schools and Counselors</h2>
+					<div class="table-container">
+						<table class="table">
+							<thead>
+								<tr>
+									<th>School</th>
+									<th>School ID</th>
+									<th>Counselors</th>
+									<th>Actions</th>
+								</tr>
+							</thead>
+							<tbody id="schoolsTable">
+								<!-- Schools will be loaded here -->
+							</tbody>
+						</table>
+					</div>
+					<div
+						id="noSchools"
+						class="hint-text"
+						style="text-align: center; padding: 1rem">
+						No schools added yet. Add a school to get started.
+					</div>
+				</section>
+			</main>
+		</div>
+
+		<script>
+			// Authentication Check
+			function checkAndSetLoginStatus() {
+				const jwtToken = localStorage.getItem("admin_jwt_token");
+				if (jwtToken) {
+					localStorage.setItem("isAuthenticated", "true");
+					return true;
+				}
+
+				const cookieToken = getCookie("admin_session_token");
+				if (cookieToken) {
+					localStorage.setItem("isAuthenticated", "true");
+					return true;
+				}
+
+				localStorage.removeItem("isAuthenticated");
+				return false;
+			}
+
+			window.addEventListener("DOMContentLoaded", (event) => {
+				if (!checkAndSetLoginStatus()) {
+					window.location.href = "/admin/login_page";
+				} else {
+					// Initial data loads
+					loadSchoolsData();
+					loadSchoolOptions();
+					setupQRDownloads();
+
+					// Setup periodic refresh
+					setupDataRefresh();
+				}
+			});
+
+			function getCookie(name) {
+				const value = `; ${document.cookie}`;
+				const parts = value.split(`; ${name}=`);
+				if (parts.length === 2) return parts.pop().split(";").shift();
+			}
+
+			async function logout() {
+				document.cookie =
+					"admin_session_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+				localStorage.removeItem("admin_jwt_token");
+				window.location.href = "/admin/login_page";
+			}
+
+			function generateQrCode(elementId, text) {
+				document.getElementById(elementId).innerHTML = "";
+				if (typeof QRCode === "undefined") {
+					console.error("QRCode library is not loaded.");
+					return;
+				}
+				new QRCode(document.getElementById(elementId), {
+					text: text,
+					width: 128,
+					height: 128,
+					colorDark: "#000000",
+					colorLight: "#ffffff",
+					correctLevel: QRCode.CorrectLevel.H,
+				});
+			}
+
+			// School Management
+			document
+				.getElementById("addSchoolForm")
+				.addEventListener("submit", async function (event) {
+					event.preventDefault();
+					const schoolName = document.getElementById("schoolName").value;
+					const schoolId = document.getElementById("schoolId").value;
+					const schoolLocation =
+						document.getElementById("schoolLocation").value;
+
+					try {
+						const response = await fetch("/admin/schools/create", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								name: schoolName,
+								school_id: schoolId,
+								location: schoolLocation,
+							}),
+						});
+
+						if (response.ok) {
+							const data = await response.json();
+							document.getElementById("newSchoolName").textContent = schoolName;
+							document.getElementById("newSchoolId").textContent = schoolId;
+							document.getElementById("newSchoolLocation").textContent =
+								schoolLocation;
+
+							// Generate QR with school ID
+							generateQrCode("schoolQrCode", schoolId);
+
+							document
+								.getElementById("schoolResult")
+								.classList.remove("hidden");
+
+							// Refresh schools list
+							loadSchoolsData();
+						} else {
+							const errorData = await response.json();
+							alert(
+								"Failed to add school: " + (errorData.detail || "Unknown error")
+							);
+						}
+					} catch (error) {
+						alert("Network error or server unreachable.");
+						console.error("School creation error:", error);
+					}
+				});
+
+			// Counselor Management
+			document
+				.getElementById("addCounselorForm")
+				.addEventListener("submit", async function (event) {
+					event.preventDefault();
+					const schoolId = document.getElementById("counselorSchoolId").value;
+					const counselorName = document.getElementById("counselorName").value;
+					const email = document.getElementById("counselorEmail").value;
+					const password = document.getElementById("counselorPassword").value;
+
+					try {
+						const response = await fetch("/admin/counselors/create", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								name: counselorName,
+								email: email,
+								password: password,
+								campus_id: schoolId,
+							}),
+						});
+
+						if (response.ok) {
+							const data = await response.json();
+							document.getElementById("newCounselorName").textContent =
+								counselorName;
+							document.getElementById("newCounselorEmail").textContent = email;
+							document.getElementById("newCounselorSchoolId").textContent =
+								schoolId;
+							document.getElementById("newCounselorId").textContent =
+								data.user_id;
+							document.getElementById("newCounselorPassword").textContent =
+								data.password;
+
+							// Generate QR with counselor ID
+							generateQrCode("counselorQrCode", data.user_id);
+
+							document
+								.getElementById("counselorResult")
+								.classList.remove("hidden");
+
+							// Refresh schools list
+							loadSchoolsData();
+						} else {
+							const errorData = await response.json();
+							alert(
+								"Failed to add counselor: " +
+									(errorData.detail || "Unknown error")
+							);
+						}
+					} catch (error) {
+						alert("Network error or server unreachable.");
+						console.error("Counselor creation error:", error);
+					}
+				});
+
+			// Load Schools and Counselors Data
+			async function loadSchoolsData() {
+				try {
+					const response = await fetch("/admin/schools/list");
+
+					if (response.ok) {
+						const data = await response.json();
+						const tableBody = document.getElementById("schoolsTable");
+						const noSchools = document.getElementById("noSchools");
+
+						tableBody.innerHTML = "";
+
+						if (data.schools && data.schools.length > 0) {
+							noSchools.style.display = "none";
+
+							data.schools.forEach((school) => {
+								const row = document.createElement("tr");
+
+								const counselorsText =
+									school.counselors.length > 0
+										? school.counselors
+												.map((c) => c.name || c.user_id)
+												.join(", ")
+										: "No counselors";
+
+								row.innerHTML = `
+									<td>${school.name}</td>
+									<td>${school.school_id}</td>
+									<td>${counselorsText}</td>
+									<td>
+										<button onclick="viewSchoolQR('${school.school_id}')" 
+												class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+											View QR
+										</button>
+									</td>
+								`;
+
+								tableBody.appendChild(row);
+							});
+						} else {
+							noSchools.style.display = "block";
+						}
+					} else {
+						console.error("Failed to load schools data");
+					}
+				} catch (error) {
+					console.error("Error loading schools data:", error);
+				}
+			}
+
+			// View School QR Code with real-time data
+			async function viewSchoolQR(schoolId) {
+				try {
+					const response = await fetch(`/admin/schools/${schoolId}/qrcode`);
+					if (response.ok) {
+						const data = await response.json();
+
+						// Display school data
+						document.getElementById("newSchoolId").textContent =
+							data.data.school_id;
+						document.getElementById("newSchoolName").textContent =
+							data.data.name;
+
+						// Add info about the dynamic nature of the QR code
+						const apiUrl = `${window.location.origin}/api/school/${schoolId}`;
+
+						// Generate QR code with the API URL
+						generateQrCode("schoolQrCode", apiUrl);
+
+						// Show the result section
+						document.getElementById("schoolResult").classList.remove("hidden");
+						document
+							.getElementById("schoolResult")
+							.scrollIntoView({ behavior: "smooth" });
+
+						// Display counselor list in the result box
+						const counselorList = document.createElement("div");
+						counselorList.classList.add("counselor-list");
+						counselorList.innerHTML = "<h4>Current Counselors:</h4>";
+
+						if (data.data.counselors && data.data.counselors.length > 0) {
+							const list = document.createElement("ul");
+							data.data.counselors.forEach((counselor) => {
+								const item = document.createElement("li");
+								item.textContent = `${counselor.name} (${counselor.id})`;
+								list.appendChild(item);
+							});
+							counselorList.appendChild(list);
+						} else {
+							counselorList.innerHTML += "<p>No counselors assigned yet</p>";
+						}
+
+						// Replace any existing counselor list
+						const existingList = document.querySelector(".counselor-list");
+						if (existingList) {
+							existingList.remove();
+						}
+
+						// Add a note about the dynamic QR code and authentication requirement
+						const dynamicNote = document.createElement("div");
+						dynamicNote.classList.add("auth-info");
+						dynamicNote.innerHTML = `
+							<p class="hint-text"><strong>This QR code is dynamic!</strong> It will always return the current list of counselors when scanned.</p>
+							<p class="hint-text">API endpoint: ${apiUrl}</p>
+							<p class="hint-text"><strong>Note:</strong> Users must be authenticated to access this endpoint.</p>
+							<p class="hint-text">Include Authorization header: <code>Bearer &lt;jwt_token&gt;</code></p>
+							<p class="hint-text">Rate limit: 5 requests per 10 seconds per user</p>
+						`;
+						counselorList.appendChild(dynamicNote);
+
+						document.getElementById("schoolResult").appendChild(counselorList);
+					}
+				} catch (error) {
+					console.error("Error fetching school QR data:", error);
+				}
+			}
+
+			// Setup QR code download buttons
+			function setupQRDownloads() {
+				// For school QR code
+				const schoolQRDownload = document.getElementById("downloadSchoolQR");
+				if (schoolQRDownload) {
+					schoolQRDownload.addEventListener("click", function (e) {
+						e.preventDefault();
+						const schoolId = document.getElementById("newSchoolId").textContent;
+						if (schoolId) {
+							window.location.href = `/admin/schools/${schoolId}/qrcode/download`;
+						}
+					});
+				}
+
+				// For counselor QR code
+				const counselorQRDownload = document.getElementById(
+					"downloadCounselorQR"
+				);
+				if (counselorQRDownload) {
+					counselorQRDownload.addEventListener("click", function (e) {
+						e.preventDefault();
+						const counselorId =
+							document.getElementById("newCounselorId").textContent;
+						if (counselorId) {
+							// For simplicity, we'll download a generated QR code
+							downloadQRCodeAsImage(
+								"counselorQrCode",
+								`counselor_${counselorId}.png`
+							);
+						}
+					});
+				}
+			}
+
+			// Function to download a QR code that's already on the page
+			function downloadQRCodeAsImage(elementId, filename) {
+				const canvas = document.querySelector(`#${elementId} canvas`);
+				if (!canvas) return;
+
+				const dataURL = canvas.toDataURL("image/png");
+				const link = document.createElement("a");
+				link.download = filename;
+				link.href = dataURL;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			}
+
+			// Add this function to load school options for the dropdown
+			async function loadSchoolOptions() {
+				try {
+					const response = await fetch("/admin/schools/options");
+					if (response.ok) {
+						const data = await response.json();
+						const dropdown = document.getElementById("counselorSchoolId");
+
+						// Clear existing options except the first one
+						while (dropdown.options.length > 1) {
+							dropdown.remove(1);
+						}
+
+						// Add new options
+						data.schools.forEach((school) => {
+							const option = document.createElement("option");
+							option.value = school.id;
+							option.textContent = school.name;
+							dropdown.appendChild(option);
+						});
+					}
+				} catch (error) {
+					console.error("Error loading school options:", error);
+				}
+			}
+
+			// Add a function for periodic data refresh
+			function setupDataRefresh() {
+				// Refresh data every 10 seconds
+				setInterval(() => {
+					loadSchoolsData();
+					loadSchoolOptions();
+				}, 10000);
+			}
+		</script>
+	</body>
+</html>

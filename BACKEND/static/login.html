@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Admin Login</title>
+		<style>
+			body {
+				font-family: sans-serif;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				min-height: 100vh;
+				background-color: #f4f4f4;
+			}
+			.login-container {
+				background-color: white;
+				padding: 30px;
+				border-radius: 8px;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+			}
+			h1 {
+				text-align: center;
+				color: #333;
+				margin-bottom: 20px;
+			}
+			label {
+				display: block;
+				margin-bottom: 5px;
+				color: #555;
+			}
+			input[type="text"],
+			input[type="password"] {
+				width: 100%;
+				padding: 10px;
+				margin-bottom: 15px;
+				border: 1px solid #ddd;
+				border-radius: 4px;
+				box-sizing: border-box;
+			}
+			button {
+				width: 100%;
+				padding: 10px;
+				background-color: #007bff;
+				color: white;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 16px;
+			}
+			button:hover {
+				background-color: #0056b3;
+			}
+			.error {
+				color: red;
+				text-align: center;
+				margin-top: 10px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="login-container">
+			<h1>Admin Login</h1>
+			<form id="loginForm">
+				<label for="username">Username:</label>
+				<input type="text" id="username" name="username" required />
+				<label for="password">Password:</label>
+				<input type="password" id="password" name="password" required />
+				<button type="submit">Login</button>
+			</form>
+			<div id="loginMessage" class="error"></div>
+		</div>
+
+		<script>
+			document
+				.getElementById("loginForm")
+				.addEventListener("submit", async function (event) {
+					event.preventDefault();
+					const username = document.getElementById("username").value;
+					const password = document.getElementById("password").value;
+					const messageDiv = document.getElementById("loginMessage");
+					messageDiv.textContent = "";
+
+					const formData = new URLSearchParams();
+					formData.append("username", username);
+					formData.append("password", password);
+
+					try {
+						const response = await fetch("/admin/login", {
+							method: "POST",
+							headers: {
+								"Content-Type": "application/x-www-form-urlencoded",
+							},
+							body: formData.toString(),
+						});
+
+						if (response.ok) {
+							const data = await response.json();
+
+							// Store JWT token in localStorage for persistent login
+							if (data.token) {
+								localStorage.setItem("admin_jwt_token", data.token);
+							}
+
+							messageDiv.style.color = "green";
+							messageDiv.textContent = "Login successful! Redirecting...";
+							window.location.href = "/admin";
+						} else {
+							const errorData = await response.json();
+							messageDiv.style.color = "red";
+							messageDiv.textContent = errorData.detail || "Login failed.";
+						}
+					} catch (error) {
+						messageDiv.style.color = "red";
+						messageDiv.textContent = "Network error or server unreachable.";
+						console.error("Login error:", error);
+					}
+				});
+		</script>
+	</body>
+</html>
